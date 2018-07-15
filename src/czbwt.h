@@ -6,10 +6,12 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <tuple>
 
 using std::string;
+using std::tuple;
 
-int encode(string);
-typedef std::basic_string<unsigned char> ustring;
+tuple<int, string> encode(string);
+string decode(int, string);
 
 #endif

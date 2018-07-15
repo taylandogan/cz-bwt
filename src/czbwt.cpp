@@ -3,9 +3,8 @@
 using namespace std;
 using std::string;
 
-int encode(string s) {
+tuple<int, string> encode(string s) {
   // s is the BWT block data string (original data)
-  // n is the length of string s
   int n = s.length();
   // Bucket stores the link headers of (3)
   int bucket_size = 256 * 256 * 256;
@@ -71,13 +70,98 @@ int encode(string s) {
   cout << "Start: " << start << endl;
   // cout << "My start: " << n - start << endl;
 
-  return 0;
+  return make_tuple(start, output.str());
 }
 
+string decode(int start, string s) {
+  // s is the BWT block data string (BWT encoded data)
+  // link stores the Column [0,7,6,5] of the decoding matrix. N is the length of string s.
+  int n = s.length();
+  vector<int> link(n);
+  // bucket_A stores the data counters
+  // bucket_B stores the data counters
+  int bucket_a_size = 256 * 256 * 256;
+  int bucket_b_size = 256 * 256;
+  vector<int> bucket_A(bucket_a_size, 0);
+  vector<int> bucket_B(bucket_b_size, 0);
+
+  // Phase 1: count Column 0
+  int j;
+  for (int i=0; i < n; i++) {
+    j = s[i];
+    link[i] = j;
+    bucket_A[j] = bucket_A[j] + 1;
+  }
+
+  // p traces the current position of link
+  int p = 0;
+  int m;
+  for (int i=0; i < 256; i++) {
+    // Initialize the data counters
+    j = bucket_A[i];
+    bucket_A[i] = 0;
+    while (j > 0) {
+      // m stores Column [0,7]
+      m = (link[p] << 8) | i;
+      // Phase 1: sort Column 7
+      link[p] = m;
+      p = p + 1;
+      // Phase 2: count Column [0,7]
+      bucket_B[m] = bucket_B[m] + 1;
+      j = j - 1;
+    }
+  }
+
+  // reset p
+  p = 0;
+  for (int i=0; i < bucket_b_size; i++) {
+    j = bucket_B[i];
+    while(j > 0) {
+      // m stores Column [0,7,6]
+      m = (link[p] << 8) | i;
+      // Phase 2: sort column 6
+      link[p] = m;
+      p = p + 1;
+      // Phase 3: count column [0,7,6]
+      bucket_A[m] = bucket_A[m] + 1;
+      j = j - 1;
+    }
+  }
+
+  // reset p
+  p = 0;
+  // m traces the link headers
+  m = 0;
+  // Phase 4: calculate link headers
+  for (int i = 0; i < bucket_a_size; i++) {
+    // bucket_A stores the link headers of (7)
+    m = m + bucket_A[i];
+    bucket_A[i] = m;
+  }
+
+  // j traces the position
+  j = start;
+  // Phase 4: output decoded data
+  for (int i = 0; i < n; i++) {
+    // link keeps Column [0,7,6] after phase 2
+    p = link[j];
+    // s stores the decoded block string in Column 0
+    s[i] = (p >> 16) & 255;
+    // seek the next position j with Column [0,7,6]: fetch & decrease
+    j = bucket_A[p] - 1;
+    // update the current link header of (8)
+    bucket_A[p] = j;
+  }
+
+  return s;
+}
 
 int main(int argc, char const *argv[])
 {
-  string s = "XYZAACOL";
-  encode(s);
+  string s = "XYXYXCOL";
+  cout << "Input: " << s << endl;
+  tuple <int, string> encoded = encode(s);
+  string decoded = decode(get<0>(encoded), get<1>(encoded));
+  cout << "Decoded: " << decoded << endl;
   return 0;
 }
