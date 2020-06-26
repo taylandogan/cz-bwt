@@ -1,5 +1,5 @@
 # C++ Compiler
-CXX := g++-5
+CXX := g++
 # Compiler|Linker|Library|Include Flags
 CXXFLAGS += -c -O3 -DNDEBUG -Wall -std=c++11
 LDFLAGS +=

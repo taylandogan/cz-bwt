@@ -11,23 +11,27 @@ tuple<int, string> encode(string s) {
   vector<int> link(n);
   vector<int> bucket(bucket_size, -1);
 
-  // Phase 1: build links  of (4)
+  // Phase 1: build links of (4)
+  // TODO: Instead of creating substrings just convert them to int by indexing as follows:
   int j;
   string _3mer;
-  for (int i=0; i < n; i++) {
-    if (i + 2 >= n) {
-      _3mer = s.substr(i, n-i) + s.substr(0, 3-(n-i));
+  for (int i=-2; i < n-2; i++) {
+    if (i == -2) {
+      _3mer = s.substr(n-2, n) + s.substr(0, 1);
     }
+
+    else if (i == -1) {
+      _3mer = s.substr(n-1, n) + s.substr(0, 2);
+    }
+
     else {
       _3mer = s.substr(i, 3);
     }
 
-    // cout << "_3mer: " << _3mer << endl;
     j = _3mer[0] + _3mer[1] * 256 + _3mer[2] * 256 * 256;
-    // j = _3mer[0] * 256 * 256 + _3mer[1] * 256 + _3mer[2];
-    cout << "For '" << _3mer << "' j is: " << j << endl;
-    link[i] = bucket[j];
-    bucket[j] = i;
+    // DEBUG: cout << "For '" << _3mer << "' j is: " << j << endl;
+    link[i+2] = bucket[j];
+    bucket[j] = i+2;
   }
 
   // Count traces the start position of the block
@@ -39,25 +43,23 @@ tuple<int, string> encode(string s) {
   for (int j = 0; j < bucket_size; j++) {
     i = bucket[j];
     while (i != -1) {
+      // output a character of s
+      int index = (n + (i + 1) % n) % n;
+      // DEBUG: cout << "i: " << i << " index: " << index << " val: " << s[index] << endl;
+      output << s[index];
+
       // start stores the start position
       if (i == (n-1)) {
-        cout << "i: " << i << " COUNT: " << count << endl;
         start = count;
       }
-      cout << "j: " << j << " i: " << i << endl;
 
-      // output a character of s
-      int index = (i + 1) % n;
-      output << s[index];
       i = link[i];
-      count += 1;
+      count = count + 1;
     }
   }
-  // start = (n + ((start - 3)%n)) % n;
-  cout << "Output: " << output.str() << endl;
-  cout << "Start: " << start << endl;
-  // cout << "My start: " << n - start << endl;
 
+  // DEBUG: cout << "Start: " << start << endl;
+  // DEBUG: cout << "Output: " << output.str() << endl;
   return make_tuple(start, output.str());
 }
 
@@ -81,21 +83,17 @@ string decode(int start, string s) {
     bucket_A[j] = bucket_A[j] + 1;
   }
 
-  // p traces the current position of link
-  int p = 0;
+  int p = 0;  // p traces the current position of link
   int m;
   for (int i=0; i < 256; i++) {
     // Initialize the data counters
     j = bucket_A[i];
     bucket_A[i] = 0;
     while (j > 0) {
-      // m stores Column [0,7]
-      m = (link[p] << 8) | i;
-      // Phase 1: sort Column 7
-      link[p] = m;
+      m = (link[p] << 8) | i; // m stores Column [0,7]
+      link[p] = m;  // Phase 1: sort Column 7
       p = p + 1;
-      // Phase 2: count Column [0,7]
-      bucket_B[m] = bucket_B[m] + 1;
+      bucket_B[m] = bucket_B[m] + 1;  // Phase 2: count Column [0,7]
       j = j - 1;
     }
   }
@@ -105,21 +103,16 @@ string decode(int start, string s) {
   for (int i=0; i < bucket_b_size; i++) {
     j = bucket_B[i];
     while(j > 0) {
-      // m stores Column [0,7,6]
-      m = (link[p] << 8) | i;
-      // Phase 2: sort column 6
-      link[p] = m;
+      m = (link[p] << 8) | i; // m stores Column [0,7,6]
+      link[p] = m;  // Phase 2: sort column 6
       p = p + 1;
-      // Phase 3: count column [0,7,6]
-      bucket_A[m] = bucket_A[m] + 1;
+      bucket_A[m] = bucket_A[m] + 1;  // Phase 3: count column [0,7,6]
       j = j - 1;
     }
   }
 
-  // reset p
-  p = 0;
-  // m traces the link headers
-  m = 0;
+  p = 0;  // reset p
+  m = 0;  // m traces the link headers
   // Phase 4: calculate link headers
   for (int i = 0; i < bucket_a_size; i++) {
     // bucket_A stores the link headers of (7)
@@ -127,18 +120,13 @@ string decode(int start, string s) {
     bucket_A[i] = m;
   }
 
-  // j traces the position
-  j = start;
+  j = start;  // j traces the position
   // Phase 4: output decoded data
   for (int i = 0; i < n; i++) {
-    // link keeps Column [0,7,6] after phase 2
-    p = link[j];
-    // s stores the decoded block string in Column 0
-    s[i] = (p >> 16) & 255;
-    // seek the next position j with Column [0,7,6]: fetch & decrease
-    j = bucket_A[p] - 1;
-    // update the current link header of (8)
-    bucket_A[p] = j;
+    p = link[j];  // link keeps Column [0,7,6] after phase 2
+    s[i] = (p >> 16) & 255; // s stores the decoded block string in Column 0
+    j = bucket_A[p] - 1;  // seek the next position j with Column [0,7,6]: fetch & decrease
+    bucket_A[p] = j;  // update the current link header of (8)
   }
 
   return s;
@@ -146,9 +134,10 @@ string decode(int start, string s) {
 
 int main(int argc, char const *argv[])
 {
-  string s = "XYXYXCOL";
+  string s = "DALSARKARKARTALKALKARKARTALKALKARDALSARKAR";
   cout << "Input: " << s << endl;
   tuple <int, string> encoded = encode(s);
+  cout << "Encoded: " <<  get<1>(encoded) << endl;
   string decoded = decode(get<0>(encoded), get<1>(encoded));
   cout << "Decoded: " << decoded << endl;
   return 0;
