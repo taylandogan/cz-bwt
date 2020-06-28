@@ -28,6 +28,7 @@ tuple<int, string> encode(string s) {
       _3mer = s.substr(i, 3);
     }
 
+    // TODO: Probably there is a better way to calculate j, maybe shifting instead of multiplication?
     j = _3mer[0] + _3mer[1] * 256 + _3mer[2] * 256 * 256;
     // DEBUG: cout << "For '" << _3mer << "' j is: " << j << endl;
     link[i+2] = bucket[j];
